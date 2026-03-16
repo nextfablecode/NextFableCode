@@ -15,6 +15,8 @@ const { sanitize } = require('./middleware/validation');
 const app = express();
 const server = http.createServer(app);
 
+app.set('trust proxy', 1);
+
 // Socket.IO setup
 const io = new Server(server, {
   cors: {
