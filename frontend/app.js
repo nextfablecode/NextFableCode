@@ -349,6 +349,35 @@ async function openProject(projectId) {
 // TEAMS MODALS
 // ============================================
 
+function showJoinTeamModal() {
+  document.getElementById('join-team-input').value = '';
+  document.getElementById('join-team-error').textContent = '';
+  openModal('modal-join-team');
+}
+
+async function confirmJoinTeam() {
+  const input = document.getElementById('join-team-input').value.trim();
+  const errEl = document.getElementById('join-team-error');
+  errEl.textContent = '';
+
+  if (!input) { errEl.textContent = 'Please enter an invite link or code'; return; }
+
+  // Extract code from full URL or use as-is
+  let inviteCode = input;
+  const urlMatch = input.match(/\/join\/([a-f0-9-]+)/i);
+  if (urlMatch) inviteCode = urlMatch[1];
+
+  const data = await api.post(`/teams/join/${inviteCode}`);
+  if (!data.success) {
+    errEl.textContent = data.message || 'Invalid or expired invite link';
+    return;
+  }
+
+  showToast(`✅ Joined team "${data.team.name}"!`, 'success');
+  closeAllModals();
+  await loadDashboard();
+}
+
 function showCreateTeamModal() {
   document.getElementById('new-team-name').value = '';
   document.getElementById('new-team-desc').value = '';
