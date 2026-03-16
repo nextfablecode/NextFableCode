@@ -15,9 +15,10 @@ const { sanitize } = require('./middleware/validation');
 const app = express();
 const server = http.createServer(app);
 
+// ✅ FIX 1: Trust proxy for Railway
 app.set('trust proxy', 1);
 
-// Socket.IO setup
+// ✅ FIX 2: Socket.IO — allow all origins
 const io = new Server(server, {
   cors: {
     origin: '*',
@@ -33,44 +34,31 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS
+// ✅ FIX 3: CORS — fully open, allow everything
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    // Allow any railway.app domain, localhost, and FRONTEND_URL
-    const allowed = [
-      process.env.FRONTEND_URL,
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3000',
-    ].filter(Boolean);
-    if (
-      allowed.includes(origin) ||
-      origin.endsWith('.railway.app') ||
-      origin.endsWith('.vercel.app') ||
-      origin.endsWith('.netlify.app')
-    ) {
-      callback(null, true);
-    } else {
-      callback(null, true); // allow all for now — tighten after confirmed working
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: '*',
+  credentials: false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Rate limiting
+// ✅ FIX 4: Handle OPTIONS preflight for all routes
+app.options('*', cors());
+
+// Rate limiting — with trust proxy already set above this works fine
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'Too many authentication attempts.' }
 });
 
