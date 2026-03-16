@@ -71,6 +71,8 @@ async function handleLogin() {
 
   showApp();
   await loadDashboard();
+  // Handle pending invite after login
+  await handlePendingInvite();
 }
 
 async function handleRegister() {
@@ -97,6 +99,8 @@ async function handleRegister() {
 
   showApp();
   await loadDashboard();
+  // Handle pending invite after register
+  await handlePendingInvite();
 }
 
 async function handleLogout() {
@@ -139,11 +143,17 @@ async function init() {
       localStorage.setItem('user', JSON.stringify(data.user));
       showApp();
       await loadDashboard();
+      // Check if user came from an invite link
+      await checkInviteLink();
+      // Handle pending invite from before login
+      await handlePendingInvite();
     } else {
       showAuth();
     }
   } else {
     showAuth();
+    // Check invite link even before login — saves code for after
+    checkInviteLink();
   }
 
   setupKeyboardShortcuts();
@@ -870,27 +880,44 @@ function showToast(message, type = 'info') {
 }
 
 // ============================================
-// JOIN TEAM BY INVITE (URL)
+// JOIN TEAM BY INVITE LINK
 // ============================================
 
 async function checkInviteLink() {
-  const match = window.location.pathname.match(/^\/join\/([a-f0-9-]+)$/);
-  if (!match) return;
-  
-  const inviteCode = match[1];
+  // Works for both /join/CODE and ?invite=CODE formats
+  const pathMatch = window.location.pathname.match(/^\/join\/([a-f0-9-]+)$/i);
+  const paramMatch = new URLSearchParams(window.location.search).get('invite');
+  const inviteCode = pathMatch ? pathMatch[1] : paramMatch;
+
+  if (!inviteCode) return;
+
   if (!currentUser) {
-    // Will handle after login
+    // Save invite code and show login/register
     localStorage.setItem('pendingInvite', inviteCode);
+    showToast('Please login or register to join the team', 'info');
     return;
   }
 
+  // User is logged in — join immediately
+  await joinTeamByCode(inviteCode);
+}
+
+async function handlePendingInvite() {
+  const inviteCode = localStorage.getItem('pendingInvite');
+  if (!inviteCode || !currentUser) return;
+  localStorage.removeItem('pendingInvite');
+  await joinTeamByCode(inviteCode);
+}
+
+async function joinTeamByCode(inviteCode) {
   const data = await api.post(`/teams/join/${inviteCode}`);
   if (data.success) {
-    showToast(`Joined team "${data.team.name}"!`, 'success');
+    showToast(`✅ Joined team "${data.team.name}" successfully!`, 'success');
     history.pushState({}, '', '/');
     await loadDashboard();
   } else {
-    showToast(data.message, 'error');
+    showToast(data.message || 'Invalid or expired invite link', 'error');
+    history.pushState({}, '', '/');
   }
 }
 

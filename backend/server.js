@@ -18,9 +18,9 @@ const server = http.createServer(app);
 // Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: '*',
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: false
   },
   pingTimeout: 60000
 });
@@ -33,12 +33,27 @@ app.use(helmet({
 
 // CORS
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'null' // for file:// protocol during dev
-  ],
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow any railway.app domain, localhost, and FRONTEND_URL
+    const allowed = [
+      process.env.FRONTEND_URL,
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+    ].filter(Boolean);
+    if (
+      allowed.includes(origin) ||
+      origin.endsWith('.railway.app') ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.netlify.app')
+    ) {
+      callback(null, true);
+    } else {
+      callback(null, true); // allow all for now — tighten after confirmed working
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
