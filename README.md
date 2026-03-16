@@ -1,4 +1,4 @@
-# 🚀 CodeSync — Collaborative Cloud Code Editor
+# 🚀 NextFableCode — Collaborative Cloud Code Editor
 
 A full-featured, real-time collaborative code editor built with Node.js, Express, Socket.IO, MongoDB, and Monaco Editor. Teams can securely collaborate on projects with live cursors, file synchronization, and role-based permissions.
 
